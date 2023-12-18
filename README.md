@@ -5,4 +5,5 @@ In my country, there exists an inequality affecting visually impaired individual
 The app is constructed using the Flutter framework for the frontend, while the backend relies on Google AI Studio's Gemini Pro-Vision Model, accompanied with continuous Trulens Evaluation of LLM performance in Gemini-Lens' Hosted Fast-API server on Google Cloud Run Service. 
 
 Link to API code: https://github.com/Louisljz/Gemini-Lens-API
+
 Public-Hosted API server: https://gemini-lens-api-5gfebekrdq-uc.a.run.app/docs
