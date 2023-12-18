@@ -1,7 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -75,8 +72,8 @@ class TakePictureScreenState extends State<TakePictureScreen> {
 
     if (transcript != "") {
       isBusy = true;
-      final imageBytes = await takePicture();
-      final response = await analyzeImage(imageBytes);
+      final imageFile = await _controller.takePicture();
+      final response = await runGemini(transcript, imageFile.path);
       isBusy = false;
       speak(response);
     }
@@ -114,46 +111,21 @@ class TakePictureScreenState extends State<TakePictureScreen> {
     await flutterTts.speak(text);
   }
 
-  Future<String> takePicture() async {
-    final image = await _controller.takePicture();
-    final imageFile = File(image.path);
-    final imageBytes = await imageFile.readAsBytes();
-    String base64Img = base64Encode(imageBytes);
-    return base64Img;
-  }
-
-  Future<String?> analyzeImage(base64Img) async {
-    final apiKey = dotenv.env['GOOGLE_API_KEY'];
-    final headers = {'Content-Type': 'application/json'};
-    final request = http.Request(
+  Future<String?> runGemini(String query, String filepath) async {
+    final headers = {'accept': 'application/json'};
+    final encodedQuery = Uri.encodeComponent(query);
+    final request = http.MultipartRequest(
         'POST',
         Uri.parse(
-            'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=$apiKey'));
-    request.body = json.encode({
-      "contents": [
-        {
-          "parts": [
-            {
-              "text":
-                  '''Analyze the image and answer the question below. If the image is unrelated, 
-            ignore it and answer based on textual knowledge. Keep your response as concise as possible.
-            Question: $transcript '''
-            },
-            {
-              "inline_data": {"mime_type": "image/jpeg", "data": base64Img}
-            }
-          ]
-        }
-      ]
-    });
+            'https://gemini-lens-api-5gfebekrdq-uc.a.run.app/process/?query=$encodedQuery'));
+    request.files.add(await http.MultipartFile.fromPath('image', filepath));
     request.headers.addAll(headers);
 
     http.StreamedResponse response = await request.send();
 
     if (response.statusCode == 200) {
-      final jsonString = await response.stream.bytesToString();
-      final jsonResponse = jsonDecode(jsonString);
-      return jsonResponse['candidates'][0]['content']['parts'][0]['text'];
+      final responseValue = await response.stream.bytesToString();
+      return responseValue;
     } else {
       return response.reasonPhrase;
     }
